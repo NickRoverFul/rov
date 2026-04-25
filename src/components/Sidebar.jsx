@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext.jsx'
 import './Sidebar.css'
 
 // ── SVG Icons ────────────────────────────────────────────────────────────────
@@ -58,6 +59,8 @@ const NAV_ITEMS = [
 ]
 
 export default function Sidebar() {
+  const { user, signOut } = useAuth()
+
   return (
     <aside className="sidebar">
       {/* Logo */}
@@ -107,12 +110,16 @@ export default function Sidebar() {
       {/* Footer */}
       <div className="sidebar-footer">
         <div className="sidebar-divider" />
+        <div className="sidebar-user">
+          <span className="sidebar-user-email">{user?.email}</span>
+          <button className="sidebar-signout" onClick={signOut}>Sign out</button>
+        </div>
         <div className="sidebar-version">
           <span className="mono" style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-            ROV v0.1.0
+            ROV v0.2.0
           </span>
           <span style={{ fontSize: 10, color: 'var(--text-dim)' }}>
-            Session 1
+            Session 2
           </span>
         </div>
       </div>
