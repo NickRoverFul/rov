@@ -1,0 +1,534 @@
+/* ── Tabs ───────────────────────────────────── */
+.at-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+
+.at-tab {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all 0.12s ease;
+}
+
+.at-tab:hover { color: var(--text-sub); }
+
+.at-tab--active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* ── Section ────────────────────────────────── */
+.at-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.at-section-header {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.at-section-title {
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text);
+}
+
+.at-section-sub {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── Form ───────────────────────────────────── */
+.at-form {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.at-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+@media (max-width: 1000px) {
+  .at-form-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.at-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.at-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.at-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.at-input {
+  background: var(--surface-2);
+  border: 1px solid var(--border-2);
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+  outline: none;
+  width: 100%;
+  transition: border-color 0.12s;
+}
+
+.at-input:focus { border-color: var(--accent-ring); }
+
+.at-input--prefix { padding-left: 22px; }
+.at-input--suffix { padding-right: 36px; }
+
+.at-input-prefix {
+  position: absolute;
+  left: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.at-input-suffix {
+  position: absolute;
+  right: 8px;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.at-select {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  cursor: pointer;
+  appearance: none;
+}
+
+.at-form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+/* Result */
+.at-result {
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.at-result--ok { background: var(--shipped-bg); color: var(--shipped); border: 1px solid rgba(56,201,106,0.2); }
+.at-result--err { background: var(--error-bg); color: var(--error); border: 1px solid rgba(239,68,68,0.2); }
+
+/* ── Client list ────────────────────────────── */
+.at-clients-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.at-client-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+}
+
+.at-client-avatar {
+  width: 36px;
+  height: 36px;
+  background: var(--accent-lo);
+  border: 1px solid var(--accent-ring);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.at-client-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.at-client-name {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.at-client-meta {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.at-client-stats {
+  display: flex;
+  gap: 12px;
+}
+
+.at-client-stat {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--text-sub);
+}
+
+.at-client-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--shipped);
+}
+
+.at-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--shipped);
+}
+
+/* ── Client selector ────────────────────────── */
+.at-client-selector {
+  display: flex;
+  gap: 6px;
+}
+
+/* ── SKU Table ──────────────────────────────── */
+.at-sku-table { overflow: hidden; }
+
+.at-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.at-table th {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 10px 14px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.at-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.at-table tr:last-child td { border-bottom: none; }
+.at-table tbody tr:hover td { background: var(--surface-2); }
+.align-right { text-align: right; }
+
+.at-inline-input {
+  background: var(--surface-3);
+  border: 1px solid var(--border-2);
+  border-radius: 3px;
+  padding: 4px 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+  outline: none;
+  width: 80px;
+  text-align: right;
+}
+
+.at-inline-input:focus { border-color: var(--accent-ring); }
+
+.at-table-footer {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+}
+
+.at-new-sku-row td { background: var(--surface-2); }
+
+/* ── Recurring charges ──────────────────────── */
+.at-charge-form {
+  padding: 16px;
+}
+
+.at-charge-inputs {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.at-charge-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.at-charge-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  transition: opacity 0.15s;
+}
+
+.at-charge-row--inactive { opacity: 0.4; }
+
+.at-charge-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.at-charge-name {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.at-charge-type {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+}
+
+.at-charge-amount {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.at-charge-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.at-empty {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 24px;
+  text-align: center;
+  border: 1px dashed var(--border-2);
+  border-radius: 6px;
+}
+
+/* ── Logo panel ─────────────────────────────── */
+.at-logo-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  padding: 20px;
+}
+
+@media (max-width: 900px) {
+  .at-logo-panel { grid-template-columns: 1fr; }
+}
+
+/* Label mockup */
+.at-label-mockup {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 16px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.at-label-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.at-label-logo {
+  max-height: 48px;
+  max-width: 120px;
+  object-fit: contain;
+}
+
+.at-label-logo-placeholder {
+  width: 80px;
+  height: 40px;
+  background: #f0f0f0;
+  border: 1px dashed #ccc;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: #999;
+  font-weight: 600;
+}
+
+.at-label-from {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.at-label-from-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: #111;
+  font-family: sans-serif;
+}
+
+.at-label-from-addr {
+  font-size: 9px;
+  color: #666;
+  font-family: sans-serif;
+}
+
+.at-label-divider { height: 1px; background: #ddd; }
+
+.at-label-to {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.at-label-to-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: #999;
+  font-family: sans-serif;
+  letter-spacing: 0.08em;
+}
+
+.at-label-to-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111;
+  font-family: sans-serif;
+}
+
+.at-label-to-addr {
+  font-size: 11px;
+  color: #333;
+  font-family: sans-serif;
+}
+
+.at-label-barcode {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding-top: 4px;
+}
+
+.at-barcode-lines {
+  display: flex;
+  align-items: stretch;
+  height: 40px;
+  gap: 1px;
+}
+
+.at-barcode-bar {
+  background: #111;
+  border-radius: 1px;
+}
+
+.at-barcode-num {
+  font-size: 9px;
+  color: #333;
+  letter-spacing: 0.1em;
+}
+
+/* Upload zone */
+.at-upload-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 28px;
+  border: 1px dashed var(--border-2);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+  min-height: 120px;
+}
+
+.at-upload-zone:hover {
+  border-color: var(--accent-ring);
+  background: var(--accent-lo);
+}
+
+.at-upload-icon {
+  font-size: 24px;
+  color: var(--text-muted);
+}
+
+.at-upload-text {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-sub);
+}
+
+.at-upload-sub {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.at-logo-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}

@@ -1,0 +1,114 @@
+.cd-welcome {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 20px;
+}
+
+.cd-welcome-text {
+  font-family: var(--font-ui);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--text);
+}
+
+.cd-welcome-name {
+  color: var(--accent);
+}
+
+.cd-welcome-sub {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-muted);
+  letter-spacing: 0.03em;
+}
+
+.cd-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 900px) {
+  .cd-stat-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.cd-section-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+/* Orders table */
+.cd-orders {
+  overflow-x: auto;
+  margin-bottom: 16px;
+}
+
+.cd-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 700px;
+}
+
+.cd-table th {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 10px 14px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.cd-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.cd-row:last-child td { border-bottom: none; }
+
+.cd-row:hover { background: var(--surface-2); }
+
+.align-right { text-align: right; }
+
+/* Billing */
+.cd-billing {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cd-billing-row {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.cd-billing-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cd-billing-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.cd-billing-val {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--text-sub);
+}
