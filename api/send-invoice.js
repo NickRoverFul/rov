@@ -141,7 +141,7 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Rover Fulfillment <nick@roverfulfillment.com>',
+        from: 'Rover Fulfillment <nick@rover-fulfillment.com>',
         to: [client.email],
         cc: ['nick@rover-fulfillment.com'],
         subject: `Invoice ${invoice.invoice_number} — ${client.name} — $${Number(invoice.total_due).toFixed(2)} due`,
