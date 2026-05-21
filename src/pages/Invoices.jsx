@@ -148,6 +148,13 @@ export default function Invoices() {
     setPickerClient(null)
   }
 
+  async function handleDeleteInvoice(inv) {
+    if (!window.confirm(`Delete invoice ${inv.id}?`)) return
+    await supabase.from('invoices').delete().eq('id', inv.id)
+    setInvoices(prev => prev.filter(i => i.id !== inv.id))
+    if (selected?.id === inv.id) setSelected(null)
+  }
+
   async function handleTogglePaid(inv) {
     const newStatus = inv.status === 'paid' ? 'sent' : 'paid'
     const updated = { ...inv, status: newStatus, paid_at: newStatus === 'paid' ? new Date().toISOString() : null }
@@ -277,13 +284,18 @@ export default function Invoices() {
                       onClick={() => { setSelected(inv); setSendResult(null) }}
                     >
                       <div className="inv-list-top">
-                        <span className="mono inv-number">{inv.invoice_number}</span>
+                        <span className="mono inv-number">{inv.id}</span>
                         <span
                           className="inv-status-badge"
                           style={{ color: cfg.color, background: cfg.bg }}
                         >
                           {cfg.label}
                         </span>
+                        <button
+                          className="inv-delete-btn"
+                          title="Delete invoice"
+                          onClick={e => { e.stopPropagation(); handleDeleteInvoice(inv) }}
+                        >×</button>
                       </div>
                       <div className="inv-list-bottom">
                         <span className="inv-list-client">{client?.name}</span>

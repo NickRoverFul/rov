@@ -152,7 +152,25 @@
   background: var(--surface-2);
 }
 
-/* ── Layout ──────────────────────────────────── */
+/* ── Delete invoice button ───────────────────────── */
+.inv-delete-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 4px;
+  margin-left: auto;
+  border-radius: 4px;
+  transition: color 0.1s, background 0.1s;
+}
+.inv-delete-btn:hover {
+  color: #f87171;
+  background: var(--surface-2);
+}
+
+/* ── Layout ──────────────────────────────────────── */
 .inv-layout {
   display: grid;
   grid-template-columns: 320px 1fr;

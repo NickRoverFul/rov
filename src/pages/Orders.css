@@ -8,6 +8,23 @@
   cursor: not-allowed;
 }
 
+.sync-toast {
+  position: fixed;
+  top: 16px;
+  right: 20px;
+  z-index: 9999;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+
+.sync-toast--ok  { background: var(--shipped-bg, #1a2e1a); color: var(--shipped, #4ade80); border: 1px solid var(--shipped, #4ade80); }
+.sync-toast--err { background: var(--error-bg, #2e1a1a);  color: var(--error, #f87171);   border: 1px solid var(--error, #f87171); }
+
+
 .orders-info-bar {
   display: flex;
   align-items: center;
