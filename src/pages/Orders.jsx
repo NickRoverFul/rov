@@ -65,7 +65,7 @@ export default function Orders() {
               disabled={syncing}
               title="Pull new orders from Wix"
             >
-              {syncing ? '⟳ Syncing...' : '↻ Sync Wix'}
+              {syncing ? '⟳ Syncing...' : '↻ Refresh'}
             </button>
           </div>
         }
