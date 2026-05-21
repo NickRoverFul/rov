@@ -66,6 +66,10 @@ export default async function handler(req, res) {
           address.country
         ].filter(Boolean).join(', ')
 
+        const recipientName = order.shippingInfo?.shipmentDetails?.contactDetails?.fullName
+          || order.buyerInfo?.contactDetails?.fullName
+          || null
+
         toInsert.push({
           id: crypto.randomUUID(),
           client_id: 'hhzero',
@@ -74,6 +78,7 @@ export default async function handler(req, res) {
           sku_name: item.productName?.original || item.productName || 'Unknown SKU',
           quantity: item.quantity || 1,
           destination: destination || 'No address provided',
+          customer_name: recipientName,
           status: 'pending',
           shipping_cost: 0,
           fulfillment_fee: 0.50,

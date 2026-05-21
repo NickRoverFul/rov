@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import StatusBadge from './StatusBadge.jsx'
 import { fmtRelative, fmtUSD } from '../lib/utils.js'
+import { supabase } from '../lib/supabase.js'
 import './OrderTable.css'
 
 const STATUS_FILTERS = [
@@ -10,9 +11,14 @@ const STATUS_FILTERS = [
   { value: 'shipped', label: 'Shipped' },
 ]
 
-export default function OrderTable({ orders, clients = [], limit, compact = false }) {
+export default function OrderTable({ orders: initialOrders, clients = [], limit, compact = false }) {
+  const [orders, setOrders]           = useState(initialOrders)
   const [clientFilter, setClientFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
+
+  // Keep in sync when parent passes new orders (e.g. after refresh)
+  // Only reset if the array identity changed (new fetch)
+  useState(() => { setOrders(initialOrders) })
 
   const clientOptions = [
     { value: 'all', label: 'All Clients' },
@@ -22,6 +28,13 @@ export default function OrderTable({ orders, clients = [], limit, compact = fals
   const getClientName = (clientId) => {
     const c = clients.find(c => c.id === clientId)
     return c ? c.name : clientId
+  }
+
+  async function handleStatusChange(orderId, newStatus) {
+    const updates = { status: newStatus }
+    if (newStatus === 'shipped') updates.shipped_at = new Date().toISOString()
+    await supabase.from('orders').update(updates).eq('id', orderId)
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...updates } : o))
   }
 
   const filtered = orders
@@ -81,6 +94,7 @@ export default function OrderTable({ orders, clients = [], limit, compact = fals
             <tr>
               <th>Order</th>
               {!compact && <th>Client</th>}
+              <th>Customer</th>
               <th>SKU</th>
               <th className="align-right">Qty</th>
               <th>Destination</th>
@@ -93,7 +107,7 @@ export default function OrderTable({ orders, clients = [], limit, compact = fals
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={compact ? 7 : 8} className="ot-empty">
+                <td colSpan={compact ? 8 : 9} className="ot-empty">
                   No orders match this filter.
                 </td>
               </tr>
@@ -104,6 +118,7 @@ export default function OrderTable({ orders, clients = [], limit, compact = fals
                   order={order}
                   clientName={getClientName(order.client_id)}
                   compact={compact}
+                  onStatusChange={handleStatusChange}
                 />
               ))
             )}
@@ -114,23 +129,27 @@ export default function OrderTable({ orders, clients = [], limit, compact = fals
   )
 }
 
-function OrderRow({ order, clientName, compact }) {
+function OrderRow({ order, clientName, compact, onStatusChange }) {
   const [expanded, setExpanded] = useState(false)
-  const [status, setStatus] = useState(order.status)
 
-  function handleFulfillExternal(e) {
-    e.stopPropagation()
-    setStatus('fulfilled_externally')
+  const STATUS_CYCLE = ['pending', 'printed', 'shipped']
+
+  function nextStatus(current) {
+    const idx = STATUS_CYCLE.indexOf(current)
+    return idx >= 0 && idx < STATUS_CYCLE.length - 1 ? STATUS_CYCLE[idx + 1] : null
   }
+
+  const next = nextStatus(order.status)
 
   return (
     <>
       <tr
-        className={`ot-row ot-row--${status}${expanded ? ' ot-row--expanded' : ''}`}
+        className={`ot-row ot-row--${order.status}${expanded ? ' ot-row--expanded' : ''}`}
         onClick={() => setExpanded(e => !e)}
       >
         <td><span className="mono order-id">{order.id}</span></td>
         {!compact && <td><span className="client-name">{clientName}</span></td>}
+        <td><span style={{ fontSize: 12, color: 'var(--text-sub)' }}>{order.customer_name ?? '—'}</span></td>
         <td>
           <span className="mono sku-id">{order.sku}</span>
           <span className="sku-name">{order.sku_name}</span>
@@ -139,17 +158,21 @@ function OrderRow({ order, clientName, compact }) {
         <td><span className="destination">{order.destination}</span></td>
         <td className="align-right"><span className="mono shipping-cost">{fmtUSD(order.shipping_cost)}</span></td>
         <td className="align-right"><span className="mono fee">{fmtUSD(order.fulfillment_fee)}</span></td>
-        <td><StatusBadge status={status} /></td>
+        <td><StatusBadge status={order.status} /></td>
         <td><span className="mono age">{fmtRelative(order.created_at)}</span></td>
       </tr>
 
       {expanded && (
         <tr className="ot-detail-row">
-          <td colSpan={compact ? 8 : 9}>
+          <td colSpan={compact ? 9 : 10}>
             <div className="ot-detail">
               <div className="detail-item">
                 <span className="detail-label">Wix Order</span>
                 <span className="detail-val mono">{order.wix_order_id ?? '—'}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Customer</span>
+                <span className="detail-val">{order.customer_name ?? '—'}</span>
               </div>
               <div className="detail-item">
                 <span className="detail-label">Tracking</span>
@@ -168,17 +191,27 @@ function OrderRow({ order, clientName, compact }) {
                 <span className="detail-label">Full Destination</span>
                 <span className="detail-val">{order.destination}</span>
               </div>
-              {status !== 'fulfilled_externally' && status !== 'shipped' && (
-                <div className="detail-item" style={{ marginLeft: 'auto' }}>
+              {/* Status advance buttons */}
+              <div className="detail-item" style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                {next && (
+                  <button
+                    className="btn btn-primary"
+                    style={{ fontSize: 10, padding: '4px 10px' }}
+                    onClick={e => { e.stopPropagation(); onStatusChange(order.id, next) }}
+                  >
+                    Mark {next.charAt(0).toUpperCase() + next.slice(1)}
+                  </button>
+                )}
+                {order.status !== 'pending' && (
                   <button
                     className="btn btn-ghost"
-                    style={{ fontSize: 10, color: '#A78BFA', borderColor: 'rgba(167,139,250,0.3)' }}
-                    onClick={handleFulfillExternal}
+                    style={{ fontSize: 10, padding: '4px 10px' }}
+                    onClick={e => { e.stopPropagation(); onStatusChange(order.id, 'pending') }}
                   >
-                    Mark Fulfilled Externally
+                    Revert to Pending
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </td>
         </tr>

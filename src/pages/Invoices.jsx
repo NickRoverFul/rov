@@ -90,15 +90,19 @@ export default function Invoices() {
   const [pickerClient, setPickerClient] = useState(null)
   const [clients, setClients]           = useState([])
   const [allOrders, setAllOrders]       = useState([])
+  const [loadingInvoices, setLoadingInvoices] = useState(true)
 
   useEffect(() => {
     async function fetchData() {
-      const [{ data: clientsData }, { data: ordersData }] = await Promise.all([
+      const [{ data: clientsData }, { data: ordersData }, { data: invoicesData }] = await Promise.all([
         supabase.from('clients').select('*'),
         supabase.from('orders').select('*').order('created_at', { ascending: false }),
+        supabase.from('invoices').select('*').order('created_at', { ascending: false }),
       ])
       setClients(clientsData ?? [])
       setAllOrders(ordersData ?? [])
+      setInvoices(invoicesData ?? [])
+      setLoadingInvoices(false)
     }
     fetchData()
   }, [])
@@ -107,7 +111,7 @@ export default function Invoices() {
     setPickerClient(client)
   }
 
-  function handlePickerConfirm(client, selectedOrders) {
+  async function handlePickerConfirm(client, selectedOrders) {
     const num = nextInvoiceNumber(invoices)
     const inv = generateInvoice(
       { ...client, billing_cycle_days: client.billing_cycle_days },
@@ -122,46 +126,62 @@ export default function Invoices() {
       })),
       num
     )
-    setInvoices(prev => [inv, ...prev])
-    setSelected(inv)
+    // Save to Supabase
+    const { data: saved, error } = await supabase.from('invoices').insert({
+      id:                inv.id,
+      client_id:         inv.client_id,
+      period_start:      inv.period_start,
+      period_end:        inv.period_end,
+      period_label:      inv.period_label,
+      orders:            inv.orders,
+      total_shipping:    inv.total_shipping,
+      total_fulfillment: inv.total_fulfillment,
+      total_storage:     inv.total_storage ?? 0,
+      total_due:         inv.total_due,
+      notes:             inv.notes,
+      status:            inv.status,
+    }).select().single()
+    const toUse = saved ?? inv
+    setInvoices(prev => [toUse, ...prev])
+    setSelected(toUse)
     setSendResult(null)
     setPickerClient(null)
   }
 
-  function handleTogglePaid(inv) {
+  async function handleTogglePaid(inv) {
     const newStatus = inv.status === 'paid' ? 'sent' : 'paid'
     const updated = { ...inv, status: newStatus, paid_at: newStatus === 'paid' ? new Date().toISOString() : null }
+    await supabase.from('invoices').update({ status: newStatus, paid_at: updated.paid_at }).eq('id', inv.id)
     setInvoices(prev => prev.map(i => i.id === inv.id ? updated : i))
     if (selected?.id === inv.id) setSelected(updated)
   }
 
-  function handleUpdateNotes(inv, notes) {
+  async function handleUpdateNotes(inv, notes) {
     const updated = { ...inv, notes }
+    await supabase.from('invoices').update({ notes }).eq('id', inv.id)
     setInvoices(prev => prev.map(i => i.id === inv.id ? updated : i))
     setSelected(updated)
     setEditingNotes(false)
   }
 
-  // Called from InvoiceDetail when a shipping cost is edited inline
-  function handleUpdateOrderShipping(inv, orderId, newCost) {
-    const updatedOrders = inv.orders.map(o =>
-      o.id === orderId ? { ...o, shipping_cost: newCost } : o
-    )
+  async function handleUpdateOrderShipping(inv, orderId, newCost) {
+    const updatedOrders    = inv.orders.map(o => o.id === orderId ? { ...o, shipping_cost: newCost } : o)
     const totalShipping    = updatedOrders.reduce((s, o) => s + Number(o.shipping_cost ?? 0), 0)
     const totalFulfillment = updatedOrders.reduce((s, o) => s + Number(o.fulfillment_fee ?? 0), 0)
     const totalDue         = totalShipping + totalFulfillment + (inv.total_storage ?? 0)
     const updated = { ...inv, orders: updatedOrders, total_shipping: totalShipping, total_fulfillment: totalFulfillment, total_due: totalDue }
+    await supabase.from('invoices').update({ orders: updatedOrders, total_shipping: totalShipping, total_fulfillment: totalFulfillment, total_due: totalDue }).eq('id', inv.id)
     setInvoices(prev => prev.map(i => i.id === inv.id ? updated : i))
     setSelected(updated)
   }
 
-  // Called from InvoiceDetail when an order is removed
-  function handleRemoveOrder(inv, orderId) {
-    const updatedOrders = inv.orders.filter(o => o.id !== orderId)
+  async function handleRemoveOrder(inv, orderId) {
+    const updatedOrders    = inv.orders.filter(o => o.id !== orderId)
     const totalShipping    = updatedOrders.reduce((s, o) => s + Number(o.shipping_cost ?? 0), 0)
     const totalFulfillment = updatedOrders.reduce((s, o) => s + Number(o.fulfillment_fee ?? 0), 0)
     const totalDue         = totalShipping + totalFulfillment + (inv.total_storage ?? 0)
     const updated = { ...inv, orders: updatedOrders, total_shipping: totalShipping, total_fulfillment: totalFulfillment, total_due: totalDue }
+    await supabase.from('invoices').update({ orders: updatedOrders, total_shipping: totalShipping, total_fulfillment: totalFulfillment, total_due: totalDue }).eq('id', inv.id)
     setInvoices(prev => prev.map(i => i.id === inv.id ? updated : i))
     setSelected(updated)
   }
@@ -180,6 +200,7 @@ export default function Invoices() {
 
       if (data.success) {
         const updated = { ...inv, status: 'sent', sent_at: new Date().toISOString() }
+        await supabase.from('invoices').update({ status: 'sent', sent_at: updated.sent_at }).eq('id', inv.id)
         setInvoices(prev => prev.map(i => i.id === inv.id ? updated : i))
         setSelected(updated)
         setSendResult({ ok: true, message: `Invoice sent to ${client.email}` })
