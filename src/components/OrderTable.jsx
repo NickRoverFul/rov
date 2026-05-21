@@ -1,12 +1,7 @@
 import { useState } from 'react'
 import StatusBadge from './StatusBadge.jsx'
-import { CLIENTS, fmtRelative, fmtUSD } from '../data/mockData.js'
+import { fmtRelative, fmtUSD } from '../lib/utils.js'
 import './OrderTable.css'
-
-const FILTER_OPTIONS = [
-  { value: 'all',     label: 'All Clients' },
-  { value: 'hhzero',  label: 'HH Zero' },
-]
 
 const STATUS_FILTERS = [
   { value: 'all',     label: 'All' },
@@ -15,17 +10,22 @@ const STATUS_FILTERS = [
   { value: 'shipped', label: 'Shipped' },
 ]
 
-export default function OrderTable({ orders, limit, compact = false }) {
+export default function OrderTable({ orders, clients = [], limit, compact = false }) {
   const [clientFilter, setClientFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
 
+  const clientOptions = [
+    { value: 'all', label: 'All Clients' },
+    ...clients.map(c => ({ value: c.id, label: c.name })),
+  ]
+
   const getClientName = (clientId) => {
-    const c = CLIENTS.find(c => c.id === clientId)
+    const c = clients.find(c => c.id === clientId)
     return c ? c.name : clientId
   }
 
   const filtered = orders
-    .filter(o => clientFilter === 'all' || o.clientId === clientFilter)
+    .filter(o => clientFilter === 'all' || o.client_id === clientFilter)
     .filter(o => statusFilter === 'all' || o.status === statusFilter)
     .slice(0, limit ?? orders.length)
 
@@ -38,7 +38,7 @@ export default function OrderTable({ orders, limit, compact = false }) {
       {/* Header */}
       <div className="ot-header">
         <div className="ot-filters">
-          {FILTER_OPTIONS.map(f => (
+          {clientOptions.map(f => (
             <button
               key={f.value}
               className={`filter-tab${clientFilter === f.value ? ' filter-tab--active' : ''}`}
@@ -59,7 +59,6 @@ export default function OrderTable({ orders, limit, compact = false }) {
           ))}
         </div>
 
-        {/* Live counts */}
         <div className="ot-counts">
           <span className="count-item count--pending">
             <span className="count-num">{pending}</span> pending
@@ -103,7 +102,7 @@ export default function OrderTable({ orders, limit, compact = false }) {
                 <OrderRow
                   key={order.id}
                   order={order}
-                  clientName={getClientName(order.clientId)}
+                  clientName={getClientName(order.client_id)}
                   compact={compact}
                 />
               ))
@@ -115,14 +114,13 @@ export default function OrderTable({ orders, limit, compact = false }) {
   )
 }
 
-function OrderRow({ order, clientName, compact, onFulfillExternal }) {
+function OrderRow({ order, clientName, compact }) {
   const [expanded, setExpanded] = useState(false)
   const [status, setStatus] = useState(order.status)
 
   function handleFulfillExternal(e) {
     e.stopPropagation()
     setStatus('fulfilled_externally')
-    if (onFulfillExternal) onFulfillExternal(order.id)
   }
 
   return (
@@ -131,36 +129,18 @@ function OrderRow({ order, clientName, compact, onFulfillExternal }) {
         className={`ot-row ot-row--${status}${expanded ? ' ot-row--expanded' : ''}`}
         onClick={() => setExpanded(e => !e)}
       >
-        <td>
-          <span className="mono order-id">{order.id}</span>
-        </td>
-        {!compact && (
-          <td>
-            <span className="client-name">{clientName}</span>
-          </td>
-        )}
+        <td><span className="mono order-id">{order.id}</span></td>
+        {!compact && <td><span className="client-name">{clientName}</span></td>}
         <td>
           <span className="mono sku-id">{order.sku}</span>
-          <span className="sku-name">{order.skuName}</span>
+          <span className="sku-name">{order.sku_name}</span>
         </td>
-        <td className="align-right">
-          <span className="mono qty">{order.quantity}</span>
-        </td>
-        <td>
-          <span className="destination">{order.destination}</span>
-        </td>
-        <td className="align-right">
-          <span className="mono shipping-cost">{fmtUSD(order.shippingCost)}</span>
-        </td>
-        <td className="align-right">
-          <span className="mono fee">{fmtUSD(order.fulfillmentFee)}</span>
-        </td>
-        <td>
-          <StatusBadge status={status} />
-        </td>
-        <td>
-          <span className="mono age">{fmtRelative(order.createdAt)}</span>
-        </td>
+        <td className="align-right"><span className="mono qty">{order.quantity}</span></td>
+        <td><span className="destination">{order.destination}</span></td>
+        <td className="align-right"><span className="mono shipping-cost">{fmtUSD(order.shipping_cost)}</span></td>
+        <td className="align-right"><span className="mono fee">{fmtUSD(order.fulfillment_fee)}</span></td>
+        <td><StatusBadge status={status} /></td>
+        <td><span className="mono age">{fmtRelative(order.created_at)}</span></td>
       </tr>
 
       {expanded && (
@@ -169,19 +149,19 @@ function OrderRow({ order, clientName, compact, onFulfillExternal }) {
             <div className="ot-detail">
               <div className="detail-item">
                 <span className="detail-label">Wix Order</span>
-                <span className="detail-val mono">{order.wixOrderId}</span>
+                <span className="detail-val mono">{order.wix_order_id ?? '—'}</span>
               </div>
               <div className="detail-item">
                 <span className="detail-label">Tracking</span>
                 <span className="detail-val mono">
-                  {order.trackingNumber ?? '—'}
+                  {order.tracking_number ?? '—'}
                   {order.carrier && <span className="carrier-tag">{order.carrier}</span>}
                 </span>
               </div>
               <div className="detail-item">
                 <span className="detail-label">Total Billed</span>
                 <span className="detail-val mono accent">
-                  {fmtUSD(order.shippingCost + order.fulfillmentFee)}
+                  {fmtUSD(Number(order.shipping_cost) + Number(order.fulfillment_fee))}
                 </span>
               </div>
               <div className="detail-item">

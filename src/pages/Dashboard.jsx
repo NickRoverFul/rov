@@ -1,19 +1,34 @@
+import { useState, useEffect } from 'react'
 import TopBar from '../components/TopBar.jsx'
 import StatCard from '../components/StatCard.jsx'
 import OrderTable from '../components/OrderTable.jsx'
 import StorageCard from '../components/StorageCard.jsx'
-import { ORDERS, CLIENTS, fmtUSD } from '../data/mockData.js'
+import { supabase } from '../lib/supabase.js'
+import { fmtUSD } from '../lib/utils.js'
 import './Dashboard.css'
 
 export default function Dashboard() {
-  const today = new Date().toDateString()
-  const ordersToday = ORDERS.filter(
-    o => new Date(o.createdAt).toDateString() === today
-  )
-  const pendingCount = ORDERS.filter(o => o.status === 'pending').length
-  const totalRevenue = ORDERS.reduce(
-    (s, o) => s + o.shippingCost + o.fulfillmentFee, 0
-  )
+  const [orders, setOrders]   = useState([])
+  const [clients, setClients] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchData() {
+      const [{ data: ordersData }, { data: clientsData }] = await Promise.all([
+        supabase.from('orders').select('*').order('created_at', { ascending: false }),
+        supabase.from('clients').select('*, skus(*)'),
+      ])
+      setOrders(ordersData ?? [])
+      setClients(clientsData ?? [])
+      setLoading(false)
+    }
+    fetchData()
+  }, [])
+
+  const today        = new Date().toDateString()
+  const ordersToday  = orders.filter(o => new Date(o.created_at).toDateString() === today)
+  const pendingCount = orders.filter(o => o.status === 'pending').length
+  const totalRevenue = orders.reduce((s, o) => s + Number(o.shipping_cost ?? 0) + Number(o.fulfillment_fee ?? 0), 0)
 
   return (
     <>
@@ -24,7 +39,7 @@ export default function Dashboard() {
         <div className="stat-grid">
           <StatCard
             label="Active Clients"
-            value={CLIENTS.length}
+            value={clients.length}
             sub="HH Zero onboarded Apr 20"
           />
           <StatCard
@@ -35,7 +50,7 @@ export default function Dashboard() {
           <StatCard
             label="Pending Labels"
             value={pendingCount}
-            sub="Awaiting EasyPost — Session 3"
+            sub="Awaiting shipment"
           />
           <StatCard
             label="Cycle Revenue"
@@ -53,7 +68,11 @@ export default function Dashboard() {
               <span className="section-label">Recent Orders</span>
               <a href="/orders" className="section-link">View all →</a>
             </div>
-            <OrderTable orders={ORDERS} limit={6} />
+            {loading ? (
+              <div className="loading-placeholder">Loading...</div>
+            ) : (
+              <OrderTable orders={orders} clients={clients} limit={6} />
+            )}
           </div>
 
           {/* Right panel */}
@@ -61,7 +80,7 @@ export default function Dashboard() {
             <div className="section-header">
               <span className="section-label">Storage Status</span>
             </div>
-            {CLIENTS.map(c => (
+            {clients.map(c => (
               <StorageCard key={c.id} client={c} />
             ))}
 
@@ -70,22 +89,19 @@ export default function Dashboard() {
               <div className="billing-header">
                 <span className="section-label">Next Invoice</span>
                 <span className="billing-countdown mono">
-                  {billingDaysLeft()} days
+                  {billingDaysLeft(clients)} days
                 </span>
               </div>
               <div className="billing-rows">
-                {CLIENTS.map(c => (
+                {clients.map(c => (
                   <div key={c.id} className="billing-row">
                     <span className="billing-client">{c.name}</span>
                     <div className="billing-detail">
-                      <span className="billing-cycle">{c.billingCycleDays}-day cycle</span>
-                      <span className="billing-method">{c.paymentMethod}</span>
+                      <span className="billing-cycle">{c.billing_cycle_days}-day cycle</span>
+                      <span className="billing-method">{c.payment_method}</span>
                     </div>
                   </div>
                 ))}
-              </div>
-              <div className="billing-note">
-                Auto-invoice generation via Resend in Session 4
               </div>
             </div>
           </div>
@@ -95,11 +111,12 @@ export default function Dashboard() {
   )
 }
 
-function billingDaysLeft() {
-  // HH Zero billing cycle start = April 20, 15-day cycles
-  const cycleStart = new Date('2026-04-20')
-  const today = new Date()
-  const daysSinceStart = Math.floor((today - cycleStart) / (1000 * 60 * 60 * 24))
-  const daysInCycle = 15
-  return daysInCycle - (daysSinceStart % daysInCycle)
+function billingDaysLeft(clients) {
+  const client = clients[0]
+  if (!client) return '—'
+  const cycleStart  = new Date(client.storage_start ?? '2026-04-20')
+  const today       = new Date()
+  const daysSince   = Math.floor((today - cycleStart) / (1000 * 60 * 60 * 24))
+  const daysInCycle = client.billing_cycle_days ?? 15
+  return daysInCycle - (daysSince % daysInCycle)
 }

@@ -1,12 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import TopBar from '../components/TopBar.jsx'
-import { CLIENTS, ORDERS, fmtUSD, fmtDate } from '../data/mockData.js'
+import { supabase } from '../lib/supabase.js'
 import { generateInvoice, nextInvoiceNumber, fmtCurrency, STATUS_CONFIG } from '../lib/invoiceUtils.js'
 import './Invoices.css'
 
 // ─── Order Picker Modal ────────────────────────────────────────────────────────
-function OrderPickerModal({ client, onConfirm, onCancel }) {
-  const clientOrders = ORDERS.filter(o => o.clientId === client.id)
+function OrderPickerModal({ client, allOrders, onConfirm, onCancel }) {
+  const clientOrders = allOrders.filter(o => o.client_id === client.id)
   const [checked, setChecked] = useState(
     Object.fromEntries(clientOrders.map(o => [o.id, true]))
   )
@@ -52,11 +52,11 @@ function OrderPickerModal({ client, onConfirm, onCancel }) {
               />
               <div className="modal-order-info">
                 <span className="mono" style={{ fontSize: 11, color: 'var(--text-sub)', fontWeight: 600 }}>{o.id}</span>
-                <span style={{ fontSize: 12, color: 'var(--text-main)' }}>{o.skuName} × {o.quantity}</span>
+                <span style={{ fontSize: 12, color: 'var(--text-main)' }}>{o.sku_name} × {o.quantity}</span>
                 <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{o.destination}</span>
               </div>
               <div className="modal-order-costs">
-                <span className="mono" style={{ fontSize: 12 }}>{fmtCurrency(o.shippingCost)}</span>
+                <span className="mono" style={{ fontSize: 12 }}>{fmtCurrency(o.shipping_cost)}</span>
                 <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>shipping</span>
               </div>
             </div>
@@ -82,12 +82,26 @@ function OrderPickerModal({ client, onConfirm, onCancel }) {
 
 // ─── Main Invoices Page ────────────────────────────────────────────────────────
 export default function Invoices() {
-  const [invoices, setInvoices]       = useState([])
-  const [selected, setSelected]       = useState(null)
-  const [sending, setSending]         = useState(false)
-  const [sendResult, setSendResult]   = useState(null)
+  const [invoices, setInvoices]         = useState([])
+  const [selected, setSelected]         = useState(null)
+  const [sending, setSending]           = useState(false)
+  const [sendResult, setSendResult]     = useState(null)
   const [editingNotes, setEditingNotes] = useState(false)
-  const [pickerClient, setPickerClient] = useState(null) // client whose order picker is open
+  const [pickerClient, setPickerClient] = useState(null)
+  const [clients, setClients]           = useState([])
+  const [allOrders, setAllOrders]       = useState([])
+
+  useEffect(() => {
+    async function fetchData() {
+      const [{ data: clientsData }, { data: ordersData }] = await Promise.all([
+        supabase.from('clients').select('*'),
+        supabase.from('orders').select('*').order('created_at', { ascending: false }),
+      ])
+      setClients(clientsData ?? [])
+      setAllOrders(ordersData ?? [])
+    }
+    fetchData()
+  }, [])
 
   function openPicker(client) {
     setPickerClient(client)
@@ -96,15 +110,15 @@ export default function Invoices() {
   function handlePickerConfirm(client, selectedOrders) {
     const num = nextInvoiceNumber(invoices)
     const inv = generateInvoice(
-      { ...client, billing_cycle_days: client.billingCycleDays },
+      { ...client, billing_cycle_days: client.billing_cycle_days },
       selectedOrders.map(o => ({
         id: o.id,
         sku: o.sku,
-        sku_name: o.skuName,
+        sku_name: o.sku_name,
         quantity: o.quantity,
         destination: o.destination,
-        shipping_cost: o.shippingCost,
-        fulfillment_fee: o.fulfillmentFee,
+        shipping_cost: o.shipping_cost,
+        fulfillment_fee: o.fulfillment_fee,
       })),
       num
     )
@@ -180,7 +194,7 @@ export default function Invoices() {
   }
 
   const selectedClient = selected
-    ? CLIENTS.find(c => c.id === selected.client_id)
+    ? clients.find(c => c.id === selected.client_id)
     : null
 
   return (
@@ -191,6 +205,7 @@ export default function Invoices() {
       {pickerClient && (
         <OrderPickerModal
           client={pickerClient}
+          allOrders={allOrders}
           onConfirm={(orders) => handlePickerConfirm(pickerClient, orders)}
           onCancel={() => setPickerClient(null)}
         />
@@ -201,17 +216,16 @@ export default function Invoices() {
 
           {/* Left — invoice list + generate */}
           <div className="inv-left">
-            {/* Generate buttons per client */}
             <div className="inv-generate-section card">
               <span className="section-label" style={{ padding: '12px 16px', display: 'block', borderBottom: '1px solid var(--border)' }}>
                 Generate Invoice
               </span>
-              {CLIENTS.map(client => (
+              {clients.map(client => (
                 <div key={client.id} className="inv-generate-row">
                   <div className="inv-generate-client">
                     <span className="inv-client-name">{client.name}</span>
                     <span className="inv-client-meta">
-                      {ORDERS.filter(o => o.clientId === client.id).length} orders · {client.billingCycleDays}-day cycle
+                      {allOrders.filter(o => o.client_id === client.id).length} orders · {client.billing_cycle_days}-day cycle
                     </span>
                   </div>
                   <button
@@ -233,7 +247,7 @@ export default function Invoices() {
                 </div>
               ) : (
                 invoices.map(inv => {
-                  const client = CLIENTS.find(c => c.id === inv.client_id)
+                  const client = clients.find(c => c.id === inv.client_id)
                   const cfg = STATUS_CONFIG[inv.status] ?? STATUS_CONFIG.draft
                   return (
                     <div

@@ -1,27 +1,54 @@
+import { useState, useEffect } from 'react'
 import TopBar from '../components/TopBar.jsx'
 import OrderTable from '../components/OrderTable.jsx'
-import { ORDERS } from '../data/mockData.js'
+import { supabase } from '../lib/supabase.js'
 import './Orders.css'
 
 export default function Orders() {
+  const [orders, setOrders]   = useState([])
+  const [clients, setClients] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState(null)
+
+  async function fetchData() {
+    setLoading(true)
+    setError(null)
+    try {
+      const [{ data: ordersData, error: oErr }, { data: clientsData, error: cErr }] = await Promise.all([
+        supabase.from('orders').select('*').order('created_at', { ascending: false }),
+        supabase.from('clients').select('*'),
+      ])
+      if (oErr) throw oErr
+      if (cErr) throw cErr
+      setOrders(ordersData ?? [])
+      setClients(clientsData ?? [])
+    } catch (err) {
+      setError(err.message)
+    }
+    setLoading(false)
+  }
+
+  useEffect(() => { fetchData() }, [])
+
   return (
     <>
       <TopBar
         title="Orders"
-        subtitle={`${ORDERS.length} total · polling every 5 min (Session 2)`}
+        subtitle={loading ? 'Loading...' : `${orders.length} total`}
         actions={
           <div className="orders-actions">
-            <button className="btn btn-ghost" disabled title="Wix polling — Session 2">
-              ↻ Sync Wix
-            </button>
-            <button className="btn btn-ghost" disabled title="EasyPost — Session 3">
-              ⬇ Buy Labels
+            <button className="btn btn-ghost" onClick={fetchData} title="Refresh orders">
+              ↻ Refresh
             </button>
           </div>
         }
       />
 
       <div className="page-content">
+        {error && (
+          <div className="error-bar">⚠ {error}</div>
+        )}
+
         <div className="orders-info-bar">
           <span className="info-item">
             <span className="info-dot info-dot--pending" />
@@ -43,7 +70,11 @@ export default function Orders() {
           </span>
         </div>
 
-        <OrderTable orders={ORDERS} />
+        {loading ? (
+          <div className="loading-placeholder">Loading orders...</div>
+        ) : (
+          <OrderTable orders={orders} clients={clients} />
+        )}
       </div>
     </>
   )

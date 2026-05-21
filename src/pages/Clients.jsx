@@ -1,27 +1,51 @@
+import { useState, useEffect } from 'react'
 import TopBar from '../components/TopBar.jsx'
 import StorageCard from '../components/StorageCard.jsx'
-import { CLIENTS, ORDERS, palletsUsed, totalCases, fmtUSD } from '../data/mockData.js'
+import { supabase } from '../lib/supabase.js'
+import { palletsUsed, totalCases, fmtUSD } from '../lib/utils.js'
 import './Clients.css'
 
 export default function Clients() {
+  const [clients, setClients] = useState([])
+  const [orders, setOrders]   = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchData() {
+      const [{ data: clientsData }, { data: ordersData }] = await Promise.all([
+        supabase.from('clients').select('*, skus(*)'),
+        supabase.from('orders').select('*'),
+      ])
+      setClients(clientsData ?? [])
+      setOrders(ordersData ?? [])
+      setLoading(false)
+    }
+    fetchData()
+  }, [])
+
+  if (loading) return <div className="loading-placeholder">Loading...</div>
+
   return (
     <>
       <TopBar
         title="Clients"
-        subtitle={`${CLIENTS.length} active client`}
+        subtitle={`${clients.length} active client${clients.length !== 1 ? 's' : ''}`}
       />
 
       <div className="page-content">
-        {CLIENTS.map(client => (
-          <ClientProfile key={client.id} client={client} />
+        {clients.map(client => (
+          <ClientProfile
+            key={client.id}
+            client={client}
+            clientOrders={orders.filter(o => o.client_id === client.id)}
+          />
         ))}
 
-        {/* Placeholder for future clients */}
         <div className="add-client-card">
           <span className="add-client-icon">+</span>
           <div className="add-client-text">
             <span className="add-client-label">Add new client</span>
-            <span className="add-client-sub">Shopify and additional store types coming in Session 2+</span>
+            <span className="add-client-sub">Contact Nick to onboard a new client</span>
           </div>
         </div>
       </div>
@@ -29,20 +53,18 @@ export default function Clients() {
   )
 }
 
-function ClientProfile({ client }) {
-  const clientOrders = ORDERS.filter(o => o.clientId === client.id)
+function ClientProfile({ client, clientOrders }) {
   const totalRevenue = clientOrders.reduce(
-    (s, o) => s + o.shippingCost + o.fulfillmentFee, 0
+    (s, o) => s + Number(o.shipping_cost ?? 0) + Number(o.fulfillment_fee ?? 0), 0
   )
+  const skus = client.skus ?? []
 
   return (
     <div className="client-profile">
       {/* Header */}
       <div className="cp-header card">
         <div className="cp-header-left">
-          <div className="cp-avatar">
-            {client.shortName}
-          </div>
+          <div className="cp-avatar">{client.short_name}</div>
           <div className="cp-info">
             <h2 className="cp-name">{client.name}</h2>
             <div className="cp-meta">
@@ -58,19 +80,19 @@ function ClientProfile({ client }) {
               <span className="meta-sep" />
               <span className="cp-meta-item">
                 <span className="meta-label">Payment</span>
-                <span className="meta-val">{client.paymentMethod}</span>
+                <span className="meta-val">{client.payment_method}</span>
               </span>
               <span className="meta-sep" />
               <span className="cp-meta-item">
                 <span className="meta-label">Billing Cycle</span>
-                <span className="meta-val">{client.billingCycleDays} days</span>
+                <span className="meta-val">{client.billing_cycle_days} days</span>
               </span>
             </div>
           </div>
         </div>
         <div className="cp-header-stats">
           <div className="cp-stat">
-            <span className="mono cp-stat-val">{fmtUSD(client.fulfillmentFee)}</span>
+            <span className="mono cp-stat-val">{fmtUSD(client.fulfillment_fee)}</span>
             <span className="cp-stat-label">per order</span>
           </div>
           <div className="cp-stat">
@@ -90,7 +112,6 @@ function ClientProfile({ client }) {
 
       {/* Two-column body */}
       <div className="cp-body">
-        {/* Left: SKU table + orders */}
         <div className="cp-left">
           {/* SKU Inventory */}
           <div className="card">
@@ -119,24 +140,20 @@ function ClientProfile({ client }) {
                 </tr>
               </thead>
               <tbody>
-                {client.skus.map(sku => {
-                  const palletShare = sku.casesOnHand / client.casesPerPallet
-                  const weight = sku.casesOnHand * client.weightPerCase
+                {skus.map(sku => {
+                  const cpp         = client.cases_per_pallet ?? 70
+                  const wpc         = client.weight_per_case ?? 25
+                  const palletShare = sku.cases_on_hand / cpp
+                  const weight      = sku.cases_on_hand * wpc
                   return (
                     <tr key={sku.id} className="sku-row">
                       <td><span className="mono sku-id-cell">{sku.id}</span></td>
                       <td><span className="sku-name-cell">{sku.name}</span></td>
-                      <td className="align-right">
-                        <span className="mono">{sku.unitsPerCase}</span>
-                      </td>
-                      <td className="align-right">
-                        <span className="mono cases-count">{sku.casesOnHand}</span>
-                      </td>
+                      <td className="align-right"><span className="mono">{sku.units_per_case}</span></td>
+                      <td className="align-right"><span className="mono cases-count">{sku.cases_on_hand}</span></td>
                       <td className="align-right">
                         <div className="pallet-share-cell">
-                          <span className="mono pallet-frac">
-                            {palletShare.toFixed(2)}
-                          </span>
+                          <span className="mono pallet-frac">{palletShare.toFixed(2)}</span>
                           <div className="mini-bar">
                             <div
                               className="mini-bar-fill"
@@ -145,9 +162,7 @@ function ClientProfile({ client }) {
                           </div>
                         </div>
                       </td>
-                      <td className="align-right">
-                        <span className="mono weight-cell">{weight.toLocaleString()} lbs</span>
-                      </td>
+                      <td className="align-right"><span className="mono weight-cell">{weight.toLocaleString()} lbs</span></td>
                     </tr>
                   )
                 })}
@@ -155,15 +170,11 @@ function ClientProfile({ client }) {
               <tfoot>
                 <tr className="sku-total-row">
                   <td colSpan={3}><span className="section-label">Totals</span></td>
-                  <td className="align-right">
-                    <span className="mono total-val">{totalCases(client)}</span>
-                  </td>
-                  <td className="align-right">
-                    <span className="mono total-val">{palletsUsed(client)} pallets</span>
-                  </td>
+                  <td className="align-right"><span className="mono total-val">{totalCases(client)}</span></td>
+                  <td className="align-right"><span className="mono total-val">{palletsUsed(client)} pallets</span></td>
                   <td className="align-right">
                     <span className="mono total-val">
-                      {(totalCases(client) * client.weightPerCase).toLocaleString()} lbs
+                      {(totalCases(client) * (client.weight_per_case ?? 25)).toLocaleString()} lbs
                     </span>
                   </td>
                 </tr>
@@ -177,29 +188,28 @@ function ClientProfile({ client }) {
             <div className="config-row">
               <div className="config-item">
                 <span className="config-label">Cases per pallet</span>
-                <span className="config-val mono">{client.casesPerPallet}</span>
+                <span className="config-val mono">{client.cases_per_pallet}</span>
               </div>
               <div className="config-item">
                 <span className="config-label">Weight per case</span>
-                <span className="config-val mono">{client.weightPerCase} lbs</span>
+                <span className="config-val mono">{client.weight_per_case} lbs</span>
               </div>
               <div className="config-item">
                 <span className="config-label">Pallet calc</span>
-                <span className="config-val mono">⌈cases ÷ {client.casesPerPallet}⌉</span>
+                <span className="config-val mono">⌈cases ÷ {client.cases_per_pallet}⌉</span>
               </div>
               <div className="config-item">
                 <span className="config-label">Storage rate</span>
-                <span className="config-val mono">${client.storageCostPerPallet}/pallet/mo</span>
+                <span className="config-val mono">${client.storage_cost_per_pallet}/pallet/mo</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right: Storage card */}
+        {/* Right: Storage card + recent orders */}
         <div className="cp-right">
           <StorageCard client={client} />
 
-          {/* Recent orders mini */}
           <div className="card cp-recent-orders">
             <div className="cp-section-header">
               <span className="section-label">Recent Orders</span>
@@ -214,18 +224,14 @@ function ClientProfile({ client }) {
                     {o.id}
                   </span>
                   <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-ui)' }}>
-                    {o.skuName} × {o.quantity}
+                    {o.sku_name} × {o.quantity}
                   </span>
                 </div>
                 <div className="mini-order-right">
                   <span className="mono" style={{ fontSize: 11, color: 'var(--text-sub)' }}>
-                    {fmtUSD(o.shippingCost + o.fulfillmentFee)}
+                    {fmtUSD(Number(o.shipping_cost) + Number(o.fulfillment_fee))}
                   </span>
-                  <span
-                    className={`mini-status mini-status--${o.status}`}
-                  >
-                    {o.status}
-                  </span>
+                  <span className={`mini-status mini-status--${o.status}`}>{o.status}</span>
                 </div>
               </div>
             ))}
