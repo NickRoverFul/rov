@@ -118,7 +118,7 @@ export default async function handler(req, res) {
           customer_phone: customerPhone,
           status: 'pending',
           shipping_cost: 0,
-          fulfillment_fee: 0.50,
+          fulfillment_fee: 3.00,
           created_at: order.dateCreated || new Date().toISOString()
         })
       }
