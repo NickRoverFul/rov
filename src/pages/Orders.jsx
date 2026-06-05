@@ -37,13 +37,21 @@ export default function Orders() {
       const res  = await fetch('/api/poll-wix', { method: 'GET' })
       const data = await res.json()
       const inserted = data.inserted ?? 0
+      const updated = data.updated ?? 0
+      const totalChanged = inserted + updated
+      let message = 'All orders already up to date'
+      if (inserted > 0 && updated > 0) {
+        message = `${inserted} new order${inserted !== 1 ? 's' : ''} added, ${updated} updated with address data`
+      } else if (inserted > 0) {
+        message = `${inserted} new order${inserted !== 1 ? 's' : ''} pulled from Wix`
+      } else if (updated > 0) {
+        message = `${updated} order${updated !== 1 ? 's' : ''} updated with missing address data`
+      }
       setSyncResult({
         ok: true,
-        message: inserted > 0
-          ? `${inserted} new order${inserted !== 1 ? 's' : ''} pulled from Wix`
-          : 'All orders already up to date',
+        message,
       })
-      if (inserted > 0) await fetchData()
+      if (totalChanged > 0) await fetchData()
     } catch (err) {
       setSyncResult({ ok: false, message: err.message })
     }

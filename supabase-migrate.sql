@@ -1,8 +1,10 @@
 -- Run this in Supabase SQL Editor → New query
 -- Adds customer_name to orders + creates invoices table if not already done
 
--- 1. Add customer_name column to orders (safe to run even if already exists)
-alter table orders add column if not exists customer_name text;
+-- 1. Add customer columns to orders (safe to run even if already exists)
+alter table orders add column if not exists customer_name  text;
+alter table orders add column if not exists customer_email text;
+alter table orders add column if not exists customer_phone text;
 
 -- 2. Invoices table (from ROV-S6/supabase-invoices.sql)
 create table if not exists invoices (

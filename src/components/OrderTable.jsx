@@ -172,7 +172,19 @@ function OrderRow({ order, clientName, compact, onStatusChange }) {
               </div>
               <div className="detail-item">
                 <span className="detail-label">Customer</span>
-                <span className="detail-val">{order.customer_name ?? '—'}</span>
+                <span className="detail-val">
+                  {order.customer_name ?? '—'}
+                  {order.customer_email && (
+                    <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                      {order.customer_email}
+                    </span>
+                  )}
+                  {order.customer_phone && (
+                    <span style={{ display: 'block', fontSize: 11, color: 'var(--text-muted)' }}>
+                      {order.customer_phone}
+                    </span>
+                  )}
+                </span>
               </div>
               <div className="detail-item">
                 <span className="detail-label">Tracking</span>
@@ -191,8 +203,18 @@ function OrderRow({ order, clientName, compact, onStatusChange }) {
                 <span className="detail-label">Full Destination</span>
                 <span className="detail-val">{order.destination}</span>
               </div>
-              {/* Status advance buttons */}
-              <div className="detail-item" style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+              {/* Action buttons */}
+              <div className="detail-item" style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+                <a
+                  href="https://app.shippingeasy.com/orders"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-ghost"
+                  style={{ fontSize: 10, padding: '4px 10px', textDecoration: 'none' }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  🖨 Print Label
+                </a>
                 {next && (
                   <button
                     className="btn btn-primary"

@@ -40,36 +40,71 @@ export default async function handler(req, res) {
       return res.status(200).json({ message: 'No orders found', inserted: 0 })
     }
 
-    // Get existing wix_order_ids to avoid duplicates
+    // Get existing wix_order_ids to check for duplicates / missing data
     const wixIds = orders.map(o => o.id)
     const { data: existing } = await supabase
       .from('orders')
-      .select('wix_order_id')
+      .select('wix_order_id, destination, customer_name')
       .in('wix_order_id', wixIds)
 
-    const existingIds = new Set((existing || []).map(e => e.wix_order_id))
+    const existingMap = {}
+    for (const e of (existing || [])) {
+      existingMap[e.wix_order_id] = e
+    }
 
-    // Build new orders to insert
+    // Build new orders to insert, and updates for orders missing address data
     const toInsert = []
+    const toUpdate = [] // orders already in DB but with missing customer/destination
+
     for (const order of orders) {
-      if (existingIds.has(order.id)) continue
-
       const lineItems = order.lineItems || []
-      
+
+      // ── Address: Wix ecom v1 path ─────────────────────────────────────────
+      // shippingInfo.logistics.shippingDestination.address
+      const dest = order.shippingInfo?.logistics?.shippingDestination || {}
+      const address = dest.address || {}
+      const contactDetails = dest.contactDetails || {}
+
+      const destination = [
+        address.addressLine,
+        address.addressLine2,
+        address.city,
+        address.subdivision,
+        address.postalCode,
+        address.country
+      ].filter(Boolean).join(', ')
+
+      // Recipient name: try shipping destination contact, then buyer info
+      const recipientName =
+        (contactDetails.firstName || contactDetails.lastName)
+          ? [contactDetails.firstName, contactDetails.lastName].filter(Boolean).join(' ')
+          : (order.buyerInfo?.contactDetails?.fullName || null)
+
+      const customerEmail = contactDetails.email || order.buyerInfo?.email || null
+      const customerPhone = contactDetails.phone || null
+
+      const existing = existingMap[order.id]
+
+      if (existing) {
+        // Order already in DB — update if it's missing address/name data
+        const needsUpdate =
+          (!existing.destination || existing.destination === 'No address provided') ||
+          !existing.customer_name
+
+        if (needsUpdate && destination) {
+          toUpdate.push({
+            wix_order_id: order.id,
+            destination: destination || 'No address provided',
+            customer_name: recipientName,
+            customer_email: customerEmail,
+            customer_phone: customerPhone,
+          })
+        }
+        continue
+      }
+
+      // New order — insert a row per line item
       for (const item of lineItems) {
-        const address = order.shippingInfo?.shipmentDetails?.address || {}
-        const destination = [
-          address.addressLine,
-          address.city,
-          address.subdivision,
-          address.postalCode,
-          address.country
-        ].filter(Boolean).join(', ')
-
-        const recipientName = order.shippingInfo?.shipmentDetails?.contactDetails?.fullName
-          || order.buyerInfo?.contactDetails?.fullName
-          || null
-
         toInsert.push({
           id: crypto.randomUUID(),
           client_id: 'hhzero',
@@ -79,6 +114,8 @@ export default async function handler(req, res) {
           quantity: item.quantity || 1,
           destination: destination || 'No address provided',
           customer_name: recipientName,
+          customer_email: customerEmail,
+          customer_phone: customerPhone,
           status: 'pending',
           shipping_cost: 0,
           fulfillment_fee: 0.50,
@@ -87,21 +124,41 @@ export default async function handler(req, res) {
       }
     }
 
-    if (toInsert.length === 0) {
-      return res.status(200).json({ message: 'All orders already exist', inserted: 0 })
+    // Perform updates for existing orders with missing data
+    let updated = 0
+    for (const u of toUpdate) {
+      await supabase
+        .from('orders')
+        .update({
+          destination: u.destination,
+          customer_name: u.customer_name,
+          customer_email: u.customer_email,
+          customer_phone: u.customer_phone,
+        })
+        .eq('wix_order_id', u.wix_order_id)
+      updated++
     }
 
-    const { error: insertError } = await supabase
-      .from('orders')
-      .insert(toInsert)
-
-    if (insertError) {
-      return res.status(500).json({ error: 'Supabase insert error', detail: insertError })
+    if (toInsert.length === 0 && updated === 0) {
+      return res.status(200).json({ message: 'All orders already exist', inserted: 0, updated: 0 })
     }
 
-    return res.status(200).json({ 
-      message: `Successfully inserted ${toInsert.length} orders`,
-      inserted: toInsert.length
+    let inserted = 0
+    if (toInsert.length > 0) {
+      const { error: insertError } = await supabase
+        .from('orders')
+        .insert(toInsert)
+
+      if (insertError) {
+        return res.status(500).json({ error: 'Supabase insert error', detail: insertError })
+      }
+      inserted = toInsert.length
+    }
+
+    return res.status(200).json({
+      message: `Inserted ${inserted} new order(s), updated ${updated} existing order(s)`,
+      inserted,
+      updated
     })
 
   } catch (err) {
