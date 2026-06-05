@@ -131,6 +131,32 @@ export default function OrderTable({ orders: initialOrders, clients = [], limit,
 
 function OrderRow({ order, clientName, compact, onStatusChange }) {
   const [expanded, setExpanded] = useState(false)
+  const [pushing, setPushing]   = useState(false)
+  const [pushResult, setPushResult] = useState(null) // { ok, message }
+
+  async function handlePushToSE(e) {
+    e.stopPropagation()
+    setPushing(true)
+    setPushResult(null)
+    try {
+      const res  = await fetch('/api/push-to-shippingeasy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: order.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setPushResult({ ok: false, message: data.error || 'Failed to push to ShippingEasy' })
+      } else {
+        setPushResult({ ok: true, message: 'Order sent to ShippingEasy — check Ready to Ship' })
+        // optimistically update status to printed
+        onStatusChange(order.id, 'printed')
+      }
+    } catch (err) {
+      setPushResult({ ok: false, message: err.message })
+    }
+    setPushing(false)
+  }
 
   const STATUS_CYCLE = ['pending', 'printed', 'shipped']
 
@@ -204,17 +230,22 @@ function OrderRow({ order, clientName, compact, onStatusChange }) {
                 <span className="detail-val">{order.destination}</span>
               </div>
               {/* Action buttons */}
-              <div className="detail-item" style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
-                <a
-                  href="https://app.shippingeasy.com/orders"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn btn-ghost"
-                  style={{ fontSize: 10, padding: '4px 10px', textDecoration: 'none' }}
-                  onClick={e => e.stopPropagation()}
-                >
-                  🖨 Print Label
-                </a>
+              <div className="detail-item" style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                {pushResult && (
+                  <span style={{ fontSize: 10, color: pushResult.ok ? 'var(--accent)' : 'var(--error)' }}>
+                    {pushResult.message}
+                  </span>
+                )}
+                {order.status === 'pending' && (
+                  <button
+                    className="btn btn-primary"
+                    style={{ fontSize: 10, padding: '4px 10px' }}
+                    onClick={handlePushToSE}
+                    disabled={pushing}
+                  >
+                    {pushing ? '⟳ Sending...' : '📦 Create Label'}
+                  </button>
+                )}
                 {next && (
                   <button
                     className="btn btn-primary"
