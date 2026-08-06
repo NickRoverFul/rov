@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import StatusBadge from './StatusBadge.jsx'
-import { fmtRelative, fmtUSD } from '../lib/utils.js'
+import { fmtRelative, fmtUSD, fmtDate } from '../lib/utils.js'
 import { supabase } from '../lib/supabase.js'
 import './OrderTable.css'
 
@@ -101,13 +101,14 @@ export default function OrderTable({ orders: initialOrders, clients = [], limit,
               <th className="align-right">Shipping</th>
               <th className="align-right">Fee</th>
               <th>Status</th>
+              <th>Date</th>
               <th>Age</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={compact ? 8 : 9} className="ot-empty">
+                <td colSpan={compact ? 9 : 10} className="ot-empty">
                   No orders match this filter.
                 </td>
               </tr>
@@ -185,12 +186,13 @@ function OrderRow({ order, clientName, compact, onStatusChange }) {
         <td className="align-right"><span className="mono shipping-cost">{fmtUSD(order.shipping_cost)}</span></td>
         <td className="align-right"><span className="mono fee">{fmtUSD(order.fulfillment_fee)}</span></td>
         <td><StatusBadge status={order.status} /></td>
+        <td><span className="mono age">{fmtDate(order.created_at)}</span></td>
         <td><span className="mono age">{fmtRelative(order.created_at)}</span></td>
       </tr>
 
       {expanded && (
         <tr className="ot-detail-row">
-          <td colSpan={compact ? 9 : 10}>
+          <td colSpan={compact ? 10 : 11}>
             <div className="ot-detail">
               <div className="detail-item">
                 <span className="detail-label">Wix Order</span>
@@ -218,6 +220,10 @@ function OrderRow({ order, clientName, compact, onStatusChange }) {
                   {order.tracking_number ?? '—'}
                   {order.carrier && <span className="carrier-tag">{order.carrier}</span>}
                 </span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Shipping Option</span>
+                <span className="detail-val">{order.shipping_method ?? '—'}</span>
               </div>
               <div className="detail-item">
                 <span className="detail-label">Total Billed</span>
