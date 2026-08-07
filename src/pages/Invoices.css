@@ -95,6 +95,83 @@
   border-top: 1px solid var(--border);
 }
 
+/* ── Storage fee picker (order modal) ────────── */
+.modal-storage-section {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.modal-storage-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-sub);
+  cursor: pointer;
+}
+
+.modal-storage-toggle input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.modal-storage-inputs {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.modal-storage-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.modal-storage-field-label {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.modal-storage-input {
+  width: 64px;
+  padding: 5px 8px;
+  font-size: 12px;
+  font-family: var(--font-mono, monospace);
+  background: var(--surface-2);
+  border: 1px solid var(--border-2);
+  border-radius: 4px;
+  color: var(--text-main);
+  outline: none;
+}
+
+.modal-storage-input:focus {
+  border-color: var(--accent-ring);
+}
+
+.modal-storage-times,
+.modal-storage-equals {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding-bottom: 6px;
+}
+
+.modal-storage-fee {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  padding-bottom: 4px;
+}
+
 /* ── Editable shipping cost ──────────────────── */
 .inv-shipping-editable {
   cursor: pointer;
@@ -131,6 +208,34 @@
   border-radius: 4px;
   color: var(--text-main);
   text-align: right;
+  outline: none;
+}
+
+/* ── Editable storage total ──────────────────── */
+.inv-storage-editable {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+
+.inv-storage-editable:hover {
+  background: var(--surface-2);
+}
+
+.inv-storage-input {
+  width: 80px;
+  padding: 3px 6px;
+  font-size: 14px;
+  font-family: var(--font-mono, monospace);
+  background: var(--surface-2);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--text-main);
+  text-align: center;
   outline: none;
 }
 

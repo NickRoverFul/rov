@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import TopBar from '../components/TopBar.jsx'
 import { supabase } from '../lib/supabase.js'
 import { generateInvoice, nextInvoiceNumber, fmtCurrency, STATUS_CONFIG } from '../lib/invoiceUtils.js'
+import { palletsUsed } from '../lib/utils.js'
 import './Invoices.css'
 
 // ─── Order Picker Modal ────────────────────────────────────────────────────────
@@ -10,6 +11,17 @@ function OrderPickerModal({ client, allOrders, onConfirm, onCancel }) {
   const [checked, setChecked] = useState(
     Object.fromEntries(clientOrders.map(o => [o.id, true]))
   )
+
+  const defaultPallets = palletsUsed(client)
+  const defaultRate    = client.storage_cost_per_pallet ?? 20
+
+  const [includeStorage, setIncludeStorage] = useState(defaultPallets > 0)
+  const [pallets, setPallets] = useState(String(defaultPallets))
+  const [rate, setRate]       = useState(String(defaultRate))
+
+  const palletsNum = parseFloat(pallets) || 0
+  const rateNum    = parseFloat(rate) || 0
+  const storageFee = includeStorage ? Math.round(palletsNum * rateNum * 100) / 100 : 0
 
   function toggle(id) {
     setChecked(prev => ({ ...prev, [id]: !prev[id] }))
@@ -63,6 +75,47 @@ function OrderPickerModal({ client, allOrders, onConfirm, onCancel }) {
           ))}
         </div>
 
+        {/* Storage fee */}
+        <div className="modal-storage-section">
+          <label className="modal-storage-toggle">
+            <input
+              type="checkbox"
+              checked={includeStorage}
+              onChange={e => setIncludeStorage(e.target.checked)}
+            />
+            <span>Include storage fee</span>
+          </label>
+          {includeStorage && (
+            <div className="modal-storage-inputs">
+              <div className="modal-storage-field">
+                <span className="modal-storage-field-label">Pallets</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  className="modal-storage-input"
+                  value={pallets}
+                  onChange={e => setPallets(e.target.value)}
+                />
+              </div>
+              <span className="modal-storage-times">×</span>
+              <div className="modal-storage-field">
+                <span className="modal-storage-field-label">$ / pallet</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="modal-storage-input"
+                  value={rate}
+                  onChange={e => setRate(e.target.value)}
+                />
+              </div>
+              <span className="modal-storage-equals">=</span>
+              <span className="mono modal-storage-fee">{fmtCurrency(storageFee)}</span>
+            </div>
+          )}
+        </div>
+
         <div className="modal-footer">
           <span style={{ fontSize: 12, color: 'var(--text-sub)' }}>
             {selected.length} of {clientOrders.length} orders selected
@@ -70,7 +123,7 @@ function OrderPickerModal({ client, allOrders, onConfirm, onCancel }) {
           <button
             className="btn btn-primary"
             disabled={selected.length === 0}
-            onClick={() => onConfirm(selected)}
+            onClick={() => onConfirm(selected, storageFee)}
           >
             Generate Invoice
           </button>
@@ -95,7 +148,7 @@ export default function Invoices() {
   useEffect(() => {
     async function fetchData() {
       const [{ data: clientsData }, { data: ordersData }, { data: invoicesData }] = await Promise.all([
-        supabase.from('clients').select('*'),
+        supabase.from('clients').select('*, skus(*)'),
         supabase.from('orders').select('*').order('created_at', { ascending: false }),
         supabase.from('invoices').select('*').order('created_at', { ascending: false }),
       ])
@@ -111,7 +164,7 @@ export default function Invoices() {
     setPickerClient(client)
   }
 
-  async function handlePickerConfirm(client, selectedOrders) {
+  async function handlePickerConfirm(client, selectedOrders, storageFee = 0) {
     const num = nextInvoiceNumber(invoices)
     const inv = generateInvoice(
       { ...client, billing_cycle_days: client.billing_cycle_days },
@@ -124,7 +177,8 @@ export default function Invoices() {
         shipping_cost: o.shipping_cost,
         fulfillment_fee: o.fulfillment_fee,
       })),
-      num
+      num,
+      storageFee
     )
     // Save to Supabase
     const { data: saved, error } = await supabase.from('invoices').insert({
@@ -182,6 +236,14 @@ export default function Invoices() {
     setSelected(updated)
   }
 
+  async function handleUpdateStorage(inv, newStorageFee) {
+    const totalDue = Number(inv.total_shipping ?? 0) + Number(inv.total_fulfillment ?? 0) + newStorageFee
+    const updated = { ...inv, total_storage: newStorageFee, total_due: totalDue }
+    await supabase.from('invoices').update({ total_storage: newStorageFee, total_due: totalDue }).eq('id', inv.id)
+    setInvoices(prev => prev.map(i => i.id === inv.id ? updated : i))
+    setSelected(updated)
+  }
+
   async function handleRemoveOrder(inv, orderId) {
     const updatedOrders    = inv.orders.filter(o => o.id !== orderId)
     const totalShipping    = updatedOrders.reduce((s, o) => s + Number(o.shipping_cost ?? 0), 0)
@@ -234,7 +296,7 @@ export default function Invoices() {
         <OrderPickerModal
           client={pickerClient}
           allOrders={allOrders}
-          onConfirm={(orders) => handlePickerConfirm(pickerClient, orders)}
+          onConfirm={(orders, storageFee) => handlePickerConfirm(pickerClient, orders, storageFee)}
           onCancel={() => setPickerClient(null)}
         />
       )}
@@ -325,6 +387,7 @@ export default function Invoices() {
                 onUpdateNotes={(notes) => handleUpdateNotes(selected, notes)}
                 onUpdateOrderShipping={(orderId, cost) => handleUpdateOrderShipping(selected, orderId, cost)}
                 onRemoveOrder={(orderId) => handleRemoveOrder(selected, orderId)}
+                onUpdateStorage={(fee) => handleUpdateStorage(selected, fee)}
                 sending={sending}
                 sendResult={sendResult}
                 editingNotes={editingNotes}
@@ -339,10 +402,12 @@ export default function Invoices() {
 }
 
 // ─── Invoice Detail ────────────────────────────────────────────────────────────
-function InvoiceDetail({ invoice, client, onTogglePaid, onSend, onUpdateNotes, onUpdateOrderShipping, onRemoveOrder, sending, sendResult, editingNotes, setEditingNotes }) {
+function InvoiceDetail({ invoice, client, onTogglePaid, onSend, onUpdateNotes, onUpdateOrderShipping, onRemoveOrder, onUpdateStorage, sending, sendResult, editingNotes, setEditingNotes }) {
   const [notesVal, setNotesVal] = useState(invoice.notes ?? '')
   const [editingShipping, setEditingShipping] = useState(null) // orderId being edited
   const [shippingDraft, setShippingDraft] = useState('')
+  const [editingStorage, setEditingStorage] = useState(false)
+  const [storageDraft, setStorageDraft] = useState(String(invoice.total_storage ?? 0))
   const cfg = STATUS_CONFIG[invoice.status] ?? STATUS_CONFIG.draft
 
   function startEditShipping(o) {
@@ -356,6 +421,19 @@ function InvoiceDetail({ invoice, client, onTogglePaid, onSend, onUpdateNotes, o
       onUpdateOrderShipping(orderId, parsed)
     }
     setEditingShipping(null)
+  }
+
+  function startEditStorage() {
+    setStorageDraft(String(invoice.total_storage ?? 0))
+    setEditingStorage(true)
+  }
+
+  function commitStorage() {
+    const parsed = parseFloat(storageDraft)
+    if (!isNaN(parsed) && parsed >= 0) {
+      onUpdateStorage(parsed)
+    }
+    setEditingStorage(false)
   }
 
   return (
@@ -405,12 +483,34 @@ function InvoiceDetail({ invoice, client, onTogglePaid, onSend, onUpdateNotes, o
           <span className="inv-total-label">Fulfillment</span>
           <span className="mono inv-total-val">{fmtCurrency(invoice.total_fulfillment)}</span>
         </div>
-        {invoice.total_storage > 0 && (
-          <div className="inv-total-box">
-            <span className="inv-total-label">Storage</span>
-            <span className="mono inv-total-val">{fmtCurrency(invoice.total_storage)}</span>
-          </div>
-        )}
+        <div className="inv-total-box">
+          <span className="inv-total-label">Storage</span>
+          {editingStorage ? (
+            <input
+              className="inv-storage-input"
+              type="number"
+              min="0"
+              step="0.01"
+              value={storageDraft}
+              autoFocus
+              onChange={e => setStorageDraft(e.target.value)}
+              onBlur={commitStorage}
+              onKeyDown={e => {
+                if (e.key === 'Enter') commitStorage()
+                if (e.key === 'Escape') setEditingStorage(false)
+              }}
+            />
+          ) : (
+            <span
+              className="mono inv-total-val inv-storage-editable"
+              title="Click to edit storage fee"
+              onClick={startEditStorage}
+            >
+              {fmtCurrency(invoice.total_storage ?? 0)}
+              <span className="inv-edit-hint">✎</span>
+            </span>
+          )}
+        </div>
         <div className="inv-total-box inv-total-box--accent">
           <span className="inv-total-label">Total Due</span>
           <span className="mono inv-total-val">{fmtCurrency(invoice.total_due)}</span>
