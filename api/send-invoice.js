@@ -82,6 +82,12 @@ export default async function handler(req, res) {
         <div style="color:#555;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px">Fulfillment</div>
         <div style="color:#eee;font-size:22px;font-weight:700;font-family:monospace">$${Number(invoice.total_fulfillment).toFixed(2)}</div>
       </div>
+      ${Number(invoice.total_storage) > 0 ? `
+      <div style="flex:1;background:#111;border:1px solid #222;border-radius:6px;padding:14px 16px">
+        <div style="color:#555;font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px">Storage</div>
+        <div style="color:#eee;font-size:22px;font-weight:700;font-family:monospace">$${Number(invoice.total_storage).toFixed(2)}</div>
+      </div>
+      ` : ''}
       <div style="flex:1;background:#FF6200;border-radius:6px;padding:14px 16px">
         <div style="color:rgba(255,255,255,0.7);font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px">Total Due</div>
         <div style="color:#fff;font-size:22px;font-weight:700;font-family:monospace">$${Number(invoice.total_due).toFixed(2)}</div>
