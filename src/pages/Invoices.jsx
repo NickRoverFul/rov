@@ -122,7 +122,8 @@ function OrderPickerModal({ client, allOrders, onConfirm, onCancel }) {
           </span>
           <button
             className="btn btn-primary"
-            disabled={selected.length === 0}
+            disabled={selected.length === 0 && storageFee <= 0}
+            title={selected.length === 0 && storageFee <= 0 ? 'Select at least one order, or include a storage fee' : undefined}
             onClick={() => onConfirm(selected, storageFee)}
           >
             Generate Invoice
